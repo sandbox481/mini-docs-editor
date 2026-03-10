@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Note Editor</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  header {
+    background: #1e90ff;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.2rem;
+  }
+  #toolbar {
+    display: flex;
+    gap: 10px;
+  }
+  button {
+    padding: 5px 10px;
+    border: none;
+    background: white;
+    color: #1e90ff;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #e0e0e0;
+  }
+  #editor {
+    flex: 1;
+    padding: 20px;
+    margin: 0;
+    background: white;
+    border-top: 1px solid #ccc;
+    font-size: 1rem;
+    outline: none;
+    overflow-y: auto;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="docName">Untitled Note</h1>
+  <div id="toolbar">
+    <button id="newNote">New</button>
+    <button id="saveNote">Save</button>
+    <button id="clearNote">Clear</button>
+  </div>
+</header>
+
+<div id="editor" contenteditable="true" placeholder="Start typing your note..."></div>
+
+<script>
+  const editor = document.getElementById('editor');
+  const docName = document.getElementById('docName');
+
+  // Save note to localStorage
+  function saveNote() {
+    const content = editor.innerHTML;
+    const title = docName.textContent || 'Untitled Note';
+    localStorage.setItem(title, content);
+    alert('Note saved!');
+  }
+
+  // Load note from localStorage
+  function loadNote(title) {
+    const content = localStorage.getItem(title);
+    if(content) {
+      editor.innerHTML = content;
+      docName.textContent = title;
+    } else {
+      editor.innerHTML = '';
+      docName.textContent = 'Untitled Note';
+    }
+  }
+
+  // Clear editor
+  function clearNote() {
+    if(confirm('Are you sure you want to clear the note?')) {
+      editor.innerHTML = '';
+      docName.textContent = 'Untitled Note';
+    }
+  }
+
+  // Create new note
+  function newNote() {
+    const title = prompt('Enter note title:', 'Untitled Note');
+    if(title) {
+      docName.textContent = title;
+      editor.innerHTML = '';
+    }
+  }
+
+  document.getElementById('saveNote').addEventListener('click', saveNote);
+  document.getElementById('clearNote').addEventListener('click', clearNote);
+  document.getElementById('newNote').addEventListener('click', newNote);
+
+  // Optional: load last edited note
+  window.addEventListener('load', () => {
+    const lastNote = localStorage.getItem('lastNoteTitle');
+    if(lastNote) loadNote(lastNote);
+  });
+
+  // Track last opened note
+  editor.addEventListener('input', () => {
+    localStorage.setItem('lastNoteTitle', docName.textContent);
+  });
+
+  // Placeholder for contenteditable
+  editor.addEventListener('focus', () => {
+    if(editor.textContent === '') editor.textContent = '';
+  });
+</script>
+
+</body>
+</html>
