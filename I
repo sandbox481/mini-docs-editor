@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Mini Docs Editor</title>
+
+<!-- App icon -->
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mini Docs">
+
+<style>
+body{font-family: Arial;margin:0;background:#f1f3f4;height:100vh;overflow:hidden;}
+
+/* Toolbar */
+#toolbar{
+    position:fixed;
+    top:0;left:0;right:0;
+    height:auto;
+    background:white;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    padding:5px 10px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.2);
+    z-index:1001;
+    gap:10px;
+}
+
+/* Toolbar buttons & inputs */
+#toolbar button,#toolbar select,#toolbar input[type="color"],#toolbar input[type="file"]{
+    height:32px;
+    min-width:32px;
+    border:none;
+    border-radius:4px;
+    background:#e0e0e0;
+    cursor:pointer;
+}
+#toolbar input[type="color"]{-webkit-appearance:none;appearance:none;padding:0;}
+#toolbar input[type="color"]::-webkit-color-swatch-wrapper{padding:0;}
+#toolbar input[type="color"]::-webkit-color-swatch{border:none;border-radius:4px;}
+#toolbar input[type="file"]{height:32px;min-width:32px;border-radius:4px;cursor:pointer;}
+
+/* Editor container */
+#editorContainer{
+    margin-top:60px;
+    height:calc(100vh - 60px);
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:0 20px;
+}
+
+/* Document title */
+#docTitle{
+    font-size:20px;
+    border:none;
+    outline:none;
+    font-weight:bold;
+    width:100%;
+    margin:60px 0 10px 0; /* top margin = toolbar height */
+}
+
+/* Pages */
+#pageContainer{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+.page{
+    width:100%;
+    max-width:900px;
+    min-height:1122px;
+    background:white;
+    margin:20px 0;
+    padding:40px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.2);
+    overflow:hidden;
+    outline:none;
+}
+.page:empty:before{
+    content: attr(data-placeholder);
+    color: gray;
+}
+.page img{
+    max-width:100%;
+    margin:10px 0;
+    cursor:move;
+    user-select:none;
+}
+.selected-image{outline:3px solid #4285f4;}
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div id="toolbar">
+    <!-- Document Actions -->
+    <button onclick="saveDocument()" id="saveBtn">Save</button>
+
+    <!-- Font Settings -->
+    <select onchange="format('fontName',this.value)">
+        <option value="Arial">Arial</option>
+        <option value="Times New Roman">Times</option>
+        <option value="Courier New">Courier</option>
+    </select>
+    <select onchange="format('fontSize',this.value)">
+        <option value="3">Normal</option>
+        <option value="4">Large</option>
+        <option value="5">Bigger</option>
+        <option value="6">Huge</option>
+    </select>
+
+    <!-- Text Style -->
+    <button onclick="format('bold')"><b>B</b></button>
+    <button onclick="format('italic')"><i>I</i></button>
+    <button onclick="format('underline')"><u>U</u></button>
+
+    <!-- Color -->
+    <input type="color" onchange="format('foreColor',this.value)">
+
+    <!-- Links & Images -->
+    <button onclick="addLink()">Link</button>
+    <input type="file" id="imgUpload" multiple>
+
+    <!-- Image size selector -->
+    <select id="imgSizeSelect" onchange="resizeSelectedImage(this.value)">
+        <option value="">Image Size</option>
+        <option value="25%">Skinny</option>
+        <option value="50%">Medium</option>
+        <option value="100%">Wide</option>
+    </select>
+</div>
+
+<!-- Editor -->
+<div id="editorContainer">
+    <input id="docTitle" value="Untitled Document">
+    <div id="pageContainer">
+        <div class="page" contenteditable="true" data-placeholder="Start writing your document..."></div>
+    </div>
+</div>
+
+<script>
+// Toolbar functions
+function format(command,value=null){ document.execCommand(command,false,value); }
+function addLink(){
+    const url = prompt("Enter URL");
+    if(url) document.execCommand("createLink", false, url);
+}
+
+// Images
+let selectedImage = null;
+const imgSizeSelect = document.getElementById("imgSizeSelect");
+
+document.getElementById("imgUpload").onchange = function(e){
+    const files = e.target.files;
+    const currentPage = getCurrentPage();
+    for(let i=0;i<files.length;i++){
+        const reader = new FileReader();
+        reader.onload = function(event){
+            currentPage.focus();
+            document.execCommand("insertImage", false, event.target.result);
+        }
+        reader.readAsDataURL(files[i]);
+    }
+}
+
+// Click to select image and update size selector
+document.getElementById("pageContainer").addEventListener("click", function(e){
+    document.querySelectorAll(".selected-image").forEach(img=>{ img.classList.remove("selected-image"); });
+    if(e.target.tagName === "IMG"){
+        selectedImage = e.target;
+        selectedImage.classList.add("selected-image");
+        // Update dropdown to match current image width
+        if(selectedImage.style.width === "25%") imgSizeSelect.value="25%";
+        else if(selectedImage.style.width === "50%") imgSizeSelect.value="50%";
+        else if(selectedImage.style.width === "100%") imgSizeSelect.value="100%";
+        else imgSizeSelect.value="";
+    } else { 
+        selectedImage=null; 
+        imgSizeSelect.value="";
+    }
+});
+
+// Resize selected image
+function resizeSelectedImage(size){
+    if(selectedImage && size){
+        selectedImage.style.width = size;
+    }
+}
+
+// Save
+function saveDocument(){
+    const pages = document.querySelectorAll(".page");
+    const title = document.getElementById("docTitle").value || "Untitled Document";
+    let contentHTML="";
+    pages.forEach(p=>{ contentHTML+=`<div>${p.innerHTML}</div>`; });
+    const fullHTML = `<html><head><title>${title}</title></head><body><h1>${title}</h1>${contentHTML}</body></html>`;
+    const blob = new Blob([fullHTML], {type:"text/html"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = title+".html";
+    a.click();
+    const btn = document.getElementById("saveBtn");
+    btn.innerText="Saved!";
+    setTimeout(()=>{ btn.innerText="Save"; },2000);
+}
+
+// Unlimited pages
+function getCurrentPage(){ 
+    return document.activeElement.classList.contains("page") ? document.activeElement : document.querySelector(".page"); 
+}
+document.getElementById("pageContainer").addEventListener("input",(e)=>{
+    const page = e.target;
+    if(page.scrollHeight > page.clientHeight){ addPage(); }
+});
+function addPage(){
+    const newPage = document.createElement("div");
+    newPage.className="page";
+    newPage.contentEditable=true;
+    newPage.setAttribute("data-placeholder","Start writing your document...");
+    document.getElementById("pageContainer").appendChild(newPage);
+}
+</script>
+</body>
+</html>
